@@ -58,20 +58,35 @@ switch ($method) {
                     // Hitung bill dari package_detail
                     $bill = 0;
                     if (!empty($service['package_detail'])) {
-                        $packageDetail = json_decode($service['package_detail'], true);
-                        
-                        if (isset($packageDetail['products'])) {
-                            $productsStr = $packageDetail['products'];
-                            $productPairs = explode(',', $productsStr);
+                        try {
+                            $packageDetail = json_decode($service['package_detail'], true);
                             
-                            foreach ($productPairs as $pair) {
-                                $parts = explode(':', $pair);
-                                if (count($parts) >= 3) {
-                                    $bill += floatval($parts[2]);
+                            // Jika ada price langsung di packageDetail
+                            if (isset($packageDetail['price'])) {
+                                $bill = floatval($packageDetail['price']);
+                            }
+                            // Jika ada produk dalam packageDetail (format baru)
+                            else if (isset($packageDetail['products']) && is_array($packageDetail['products'])) {
+                                foreach ($packageDetail['products'] as $product) {
+                                    if (isset($product['price'])) {
+                                        $bill += floatval($product['price']);
+                                    }
                                 }
                             }
-                        } elseif (isset($packageDetail['price'])) {
-                            $bill = floatval($packageDetail['price']);
+                            // Jika ada produk dalam format lama (string dengan format id:name:price)
+                            else if (isset($packageDetail['products']) && is_string($packageDetail['products'])) {
+                                $productsStr = $packageDetail['products'];
+                                $productPairs = explode(',', $productsStr);
+                                
+                                foreach ($productPairs as $pair) {
+                                    $parts = explode(':', $pair);
+                                    if (count($parts) >= 3) {
+                                        $bill += floatval($parts[2]);
+                                    }
+                                }
+                            }
+                        } catch (Exception $e) {
+                            // Log error atau biarkan bill tetap 0
                         }
                     }
                     

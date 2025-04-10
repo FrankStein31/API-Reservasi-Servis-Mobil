@@ -15,7 +15,7 @@ if ($method !== 'GET') {
 if (isset($_GET['id'])) {
     $packageId = $_GET['id'];
     
-    $query = "SELECT p.* FROM packages p WHERE p.id = ?";
+    $query = "SELECT * FROM packages WHERE id = ?";
     $stmt = $conn->prepare($query);
     $stmt->bind_param('i', $packageId);
     $stmt->execute();
@@ -25,8 +25,8 @@ if (isset($_GET['id'])) {
         $package = $result->fetch_assoc();
         
         // Get products in package
-        $query = "SELECT pr.* FROM products pr 
-                 JOIN package_products pp ON pr.id = pp.product_id 
+        $query = "SELECT p.id, p.name, p.price FROM products p 
+                 JOIN package_products pp ON p.id = pp.product_id 
                  WHERE pp.package_id = ?";
         $stmt = $conn->prepare($query);
         $stmt->bind_param('i', $packageId);
@@ -35,26 +35,91 @@ if (isset($_GET['id'])) {
         
         $products = [];
         while ($row = $result->fetch_assoc()) {
-            $products[] = $row;
+            $products[] = [
+                'id' => (int)$row['id'],
+                'name' => $row['name'],
+                'price' => (float)$row['price']
+            ];
         }
         
-        $package['products'] = $products;
+        // Hitung total harga dari produk
+        $total_price = 0;
+        foreach ($products as $product) {
+            $total_price += $product['price'];
+        }
         
-        echo json_encode(['status' => 'success', 'data' => $package]);
+        $response = [
+            'status' => true,
+            'message' => 'Data paket berhasil ditemukan',
+            'data' => [
+                'id' => (int)$package['id'],
+                'name' => $package['name'],
+                'description' => isset($package['description']) ? $package['description'] : null,
+                'products' => $products,
+                'price' => $total_price
+            ]
+        ];
     } else {
-        echo json_encode(['status' => 'error', 'message' => 'Paket tidak ditemukan']);
+        $response = [
+            'status' => false,
+            'message' => 'Paket tidak ditemukan'
+        ];
     }
+    
+    echo json_encode($response);
 } else {
     // Get all packages
     $query = "SELECT * FROM packages";
     $result = $conn->query($query);
     
-    $packages = [];
-    while ($row = $result->fetch_assoc()) {
-        $packages[] = $row;
+    if ($result->num_rows > 0) {
+        $packages = [];
+        
+        while ($row = $result->fetch_assoc()) {
+            // Query untuk mendapatkan produk dalam paket
+            $product_query = "SELECT p.id, p.name, p.price FROM products p 
+                             JOIN package_products pp ON p.id = pp.product_id 
+                             WHERE pp.package_id = ?";
+            $stmt = $conn->prepare($product_query);
+            $stmt->bind_param("i", $row['id']);
+            $stmt->execute();
+            $product_result = $stmt->get_result();
+            
+            $products = [];
+            $total_price = 0;
+            
+            while ($product = $product_result->fetch_assoc()) {
+                $product_price = (float)$product['price'];
+                $products[] = [
+                    'id' => (int)$product['id'],
+                    'name' => $product['name'],
+                    'price' => $product_price
+                ];
+                $total_price += $product_price;
+            }
+            
+            $packages[] = [
+                'id' => (int)$row['id'],
+                'name' => $row['name'],
+                'description' => isset($row['description']) ? $row['description'] : null,
+                'products' => $products,
+                'price' => $total_price
+            ];
+        }
+        
+        $response = [
+            'status' => true,
+            'message' => 'Data paket berhasil ditemukan',
+            'data' => $packages
+        ];
+    } else {
+        $response = [
+            'status' => false,
+            'message' => 'Tidak ada data paket'
+        ];
     }
     
-    echo json_encode(['status' => 'success', 'data' => $packages]);
+    echo json_encode($response);
 }
 
 $conn->close();

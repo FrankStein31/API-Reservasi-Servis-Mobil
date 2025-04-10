@@ -83,7 +83,7 @@ CREATE TABLE `customers` (
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `customers_email_unique` (`email`)
-) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 /*Data for the table `customers` */
 
@@ -92,9 +92,10 @@ insert  into `customers`(`id`,`name`,`username`,`email`,`email_verified_at`,`pas
 (2,'Katheryn Ferry','ymarvin','gregoria.krajcik@example.org','2025-02-05 01:36:19','$2y$10$JrY3G4yQpM8SvoqZiH1Ld.JZ30z30B9MLuG48oO2RkGjRTVhf40e2','M',NULL,NULL,NULL,'2025-02-05 01:36:20','2025-02-05 01:36:20'),
 (3,'Mr. Archibald Hammes I','hammes.meta','wbergnaum@example.net','2025-02-05 01:36:19','$2y$10$kTZgjEPA6SIE9VWdG1aPoua58nGvtUeG1skNm5dQSqNY35Lb3GYxK','F',NULL,NULL,NULL,'2025-02-05 01:36:20','2025-02-05 01:36:20'),
 (4,'Miss Rose Bartell DVM','deven.hettinger','lebsack.oswaldo@example.com','2025-02-05 01:36:20','$2y$10$65aIJr9CrckzMHcjC7I5a.tv6/kwDthsH620nZcuI1H.fgVIwO/mK','M',NULL,NULL,NULL,'2025-02-05 01:36:20','2025-02-05 01:36:20'),
-(5,'Cleta Sanford','magdalen17','prohaska.pinkie@example.net','2025-02-05 01:36:20','$2y$10$0u77h0oF9bQ513mLOBMtWOlAoVKx.F2O6Qy95.wAdQ8DzYElcYHFi','F',NULL,NULL,NULL,'2025-02-05 01:36:20','2025-02-05 01:36:20'),
 (6,'Sherman Nader DDS','nicole31','schultz.susie@example.net','2025-02-05 01:36:20','$2y$10$H7Nf3Dr.q/fhJJ8gxE.jWe3uH6UdkVVqZh2tjOfaqoPWw4worz8ku','M',NULL,NULL,NULL,'2025-02-05 01:36:20','2025-02-05 01:36:20'),
-(7,'Tono','tono','koko0@gmail.com',NULL,'$2y$10$jUJsUN2c5mPEiVIhYcpgWe373FYO8QHV2hc8tpZeDtGE5I/XdaigC','M','098709870987','Kediri',NULL,'2025-02-25 21:35:39','2025-02-25 21:35:39');
+(7,'Tono','tono','koko0@gmail.com',NULL,'$2y$10$jUJsUN2c5mPEiVIhYcpgWe373FYO8QHV2hc8tpZeDtGE5I/XdaigC','M','098709870987','Kediri',NULL,'2025-02-25 21:35:39','2025-02-25 21:35:39'),
+(8,'frankie steinlie','frank','frankie.steinlie@gmail.com',NULL,'$2y$10$Cf6o6rBp9oIyCkyXrlhhLO/or2HiNFV2.L3bsGOu7CnnmoX7W0086','M','08883866931','medan',NULL,NULL,NULL),
+(9,'Steinlie','stein','steinlie@gmail.com',NULL,'$2y$10$1aww7jcvg/wEc4fWoVxg5e1CLaLwQf4t0JrCVBl1.fBm0OB6MnPtu','M','08883866931','kediri',NULL,NULL,NULL);
 
 /*Table structure for table `failed_jobs` */
 
@@ -376,12 +377,13 @@ DROP TABLE IF EXISTS `payments`;
 CREATE TABLE `payments` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `service_id` bigint unsigned NOT NULL,
-  `admin_id` bigint unsigned NOT NULL,
+  `admin_id` bigint unsigned NOT NULL DEFAULT '1',
   `bill` int NOT NULL,
   `pay` int NOT NULL,
   `change` int NOT NULL,
   `method` enum('Cash','Card') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Cash',
   `note` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `snap_token` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
@@ -389,13 +391,12 @@ CREATE TABLE `payments` (
   KEY `payments_admin_id_foreign` (`admin_id`),
   CONSTRAINT `payments_admin_id_foreign` FOREIGN KEY (`admin_id`) REFERENCES `admins` (`id`),
   CONSTRAINT `payments_service_id_foreign` FOREIGN KEY (`service_id`) REFERENCES `services` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 /*Data for the table `payments` */
 
-insert  into `payments`(`id`,`service_id`,`admin_id`,`bill`,`pay`,`change`,`method`,`note`,`created_at`,`updated_at`) values 
-(1,1,3,275000,300000,25000,'Cash','-','2025-02-05 01:49:16','2025-02-05 01:49:16'),
-(2,2,1,275000,300000,25000,'Cash','-','2025-04-04 11:33:30','2025-04-04 11:33:30');
+insert  into `payments`(`id`,`service_id`,`admin_id`,`bill`,`pay`,`change`,`method`,`note`,`snap_token`,`created_at`,`updated_at`) values 
+(3,3,1,235000,235000,0,'Cash','-',NULL,'2025-04-08 16:39:34','2025-04-08 16:39:34');
 
 /*Table structure for table `products` */
 
@@ -455,15 +456,14 @@ CREATE TABLE `reservations` (
   CONSTRAINT `reservations_customer_id_foreign` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`),
   CONSTRAINT `reservations_package_id_foreign` FOREIGN KEY (`package_id`) REFERENCES `packages` (`id`),
   CONSTRAINT `reservations_vehicle_id_foreign` FOREIGN KEY (`vehicle_id`) REFERENCES `vehicles` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=24 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 /*Data for the table `reservations` */
 
 insert  into `reservations`(`id`,`customer_id`,`package_id`,`vehicle_id`,`package_detail`,`vehicle_complaint`,`reservation_date`,`reservation_time`,`reservation_origin`,`attendance_confirmation`,`attendance_message`,`created_at`,`updated_at`) values 
-(1,1,1,9,'[{\"id\": 1, \"name\": \"AliceBlue 847\", \"about\": \"And yesterday things I.\", \"pivot\": {\"package_id\": 1, \"product_id\": 1}, \"price\": 75000, \"picture\": null, \"is_active\": \"1\", \"created_at\": \"2025-02-04T18:36:19.000000Z\", \"updated_at\": \"2025-02-04T18:36:19.000000Z\", \"category_id\": 3, \"picture_url\": \"http://127.0.0.1:8000/img/no-image.jpg\"}, {\"id\": 2, \"name\": \"MidnightBlue 548\", \"about\": \"Northumbria, declared.\", \"pivot\": {\"package_id\": 1, \"product_id\": 2}, \"price\": 150000, \"picture\": null, \"is_active\": \"1\", \"created_at\": \"2025-02-04T18:36:19.000000Z\", \"updated_at\": \"2025-02-04T18:36:19.000000Z\", \"category_id\": 2, \"picture_url\": \"http://127.0.0.1:8000/img/no-image.jpg\"}]','Oli habis','2025-02-20','09:00:00','Offline',NULL,NULL,'2025-02-05 01:45:20','2025-02-05 01:45:20'),
-(2,3,1,1,'[{\"id\": 1, \"name\": \"AliceBlue 847\", \"about\": \"And yesterday things I.\", \"pivot\": {\"package_id\": 1, \"product_id\": 1}, \"price\": 75000, \"picture\": null, \"is_active\": \"1\", \"created_at\": \"2025-02-04T18:36:19.000000Z\", \"updated_at\": \"2025-02-04T18:36:19.000000Z\", \"category_id\": 3, \"picture_url\": \"http://127.0.0.1:8000/img/no-image.jpg\"}, {\"id\": 2, \"name\": \"MidnightBlue 548\", \"about\": \"Northumbria, declared.\", \"pivot\": {\"package_id\": 1, \"product_id\": 2}, \"price\": 150000, \"picture\": null, \"is_active\": \"1\", \"created_at\": \"2025-02-04T18:36:19.000000Z\", \"updated_at\": \"2025-02-04T18:36:19.000000Z\", \"category_id\": 2, \"picture_url\": \"http://127.0.0.1:8000/img/no-image.jpg\"}]','ss','2025-02-20','09:00:00','Offline',NULL,NULL,'2025-02-05 01:47:56','2025-02-05 01:47:56'),
 (3,1,2,9,'[{\"id\": 2, \"name\": \"MidnightBlue 548\", \"about\": \"Northumbria, declared.\", \"pivot\": {\"package_id\": 2, \"product_id\": 2}, \"price\": 150000, \"picture\": null, \"is_active\": \"1\", \"created_at\": \"2025-02-04T18:36:19.000000Z\", \"updated_at\": \"2025-02-04T18:36:19.000000Z\", \"category_id\": 2, \"picture_url\": \"http://127.0.0.1:8000/img/no-image.jpg\"}, {\"id\": 3, \"name\": \"LightCyan 005\", \"about\": \"March Hare. The King.\", \"pivot\": {\"package_id\": 2, \"product_id\": 3}, \"price\": 35000, \"picture\": null, \"is_active\": \"1\", \"created_at\": \"2025-02-04T18:36:19.000000Z\", \"updated_at\": \"2025-02-04T18:36:19.000000Z\", \"category_id\": 3, \"picture_url\": \"http://127.0.0.1:8000/img/no-image.jpg\"}]','stang miring','2025-04-04','09:00:00','Offline',NULL,NULL,'2025-04-04 11:27:52','2025-04-04 11:27:52'),
-(4,1,3,9,'[{\"id\": 1, \"name\": \"AliceBlue 847\", \"about\": \"And yesterday things I.\", \"pivot\": {\"package_id\": 3, \"product_id\": 1}, \"price\": 75000, \"picture\": null, \"is_active\": \"1\", \"created_at\": \"2025-02-04T18:36:19.000000Z\", \"updated_at\": \"2025-02-04T18:36:19.000000Z\", \"category_id\": 3, \"picture_url\": \"http://127.0.0.1:8000/img/no-image.jpg\"}]','gatau','2025-04-04','09:00:00','Offline',NULL,NULL,'2025-04-04 11:31:16','2025-04-04 11:31:16');
+(4,1,3,9,'[{\"id\": 1, \"name\": \"AliceBlue 847\", \"about\": \"And yesterday things I.\", \"pivot\": {\"package_id\": 3, \"product_id\": 1}, \"price\": 75000, \"picture\": null, \"is_active\": \"1\", \"created_at\": \"2025-02-04T18:36:19.000000Z\", \"updated_at\": \"2025-02-04T18:36:19.000000Z\", \"category_id\": 3, \"picture_url\": \"http://127.0.0.1:8000/img/no-image.jpg\"}]','gatau','2025-04-04','09:00:00','Offline',NULL,NULL,'2025-04-04 11:31:16','2025-04-04 11:31:16'),
+(23,9,2,14,'{\"id\": 2, \"name\": \"Ganti Oli B\", \"price\": 185000, \"products\": [{\"id\": 2, \"name\": \"MidnightBlue 548\", \"price\": 150000}, {\"id\": 3, \"name\": \"LightCyan 005\", \"price\": 35000}], \"description\": null}','qweqwe','2025-04-11','14:00:00','Online',NULL,NULL,NULL,NULL);
 
 /*Table structure for table `services` */
 
@@ -485,15 +485,14 @@ CREATE TABLE `services` (
   KEY `services_mechanic_id_foreign` (`mechanic_id`),
   CONSTRAINT `services_mechanic_id_foreign` FOREIGN KEY (`mechanic_id`) REFERENCES `mechanics` (`id`),
   CONSTRAINT `services_reservation_id_foreign` FOREIGN KEY (`reservation_id`) REFERENCES `reservations` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=24 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 /*Data for the table `services` */
 
 insert  into `services`(`id`,`reservation_id`,`service_date`,`next_service_date`,`status`,`note`,`fee`,`mechanic_id`,`created_at`,`updated_at`) values 
-(1,1,'2025-02-05','2025-03-05','Finish',NULL,50000,2,'2025-02-05 01:45:20','2025-02-05 01:49:16'),
-(2,2,'2025-04-04','2025-05-04','Finish',NULL,50000,2,'2025-02-05 01:47:56','2025-04-04 11:33:30'),
-(3,3,'2025-04-04','2025-05-04','Process',NULL,50000,3,'2025-04-04 11:27:52','2025-04-04 11:30:05'),
-(4,4,'2025-04-04',NULL,'Process',NULL,NULL,3,'2025-04-04 11:31:16','2025-04-04 11:31:25');
+(3,3,'2025-04-08','2025-05-08','Finish',NULL,50000,3,'2025-04-04 11:27:52','2025-04-08 16:39:34'),
+(4,4,'2025-04-04',NULL,'Process',NULL,NULL,3,'2025-04-04 11:31:16','2025-04-04 11:31:25'),
+(23,23,'2025-04-10',NULL,'Finish',NULL,NULL,2,NULL,'2025-04-10 16:34:30');
 
 /*Table structure for table `vehicles` */
 
@@ -512,7 +511,7 @@ CREATE TABLE `vehicles` (
   PRIMARY KEY (`id`),
   KEY `vehicles_customer_id_foreign` (`customer_id`),
   CONSTRAINT `vehicles_customer_id_foreign` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 /*Data for the table `vehicles` */
 
@@ -526,7 +525,11 @@ insert  into `vehicles`(`id`,`customer_id`,`name`,`brand`,`year`,`plate_number`,
 (7,2,'Apt. 165','Port','1977','AA 02043 XX','610434211','2025-02-05 01:36:20','2025-02-05 01:36:20'),
 (8,4,'Apt. 642','Lake','2009','AA 12729 XX','507593700','2025-02-05 01:36:20','2025-02-05 01:36:20'),
 (9,1,'Suite 600','Port','1978','AA 93781 XX','1101357538','2025-02-05 01:36:20','2025-02-05 01:36:20'),
-(10,1,'Suite 812','New','1997','AA 37720 XX','1353142104','2025-02-05 01:36:20','2025-02-05 01:36:20');
+(10,1,'Suite 812','New','1997','AA 37720 XX','1353142104','2025-02-05 01:36:20','2025-02-05 01:36:20'),
+(11,8,'vario','honda','2024','ag 2222 xx','123123123',NULL,NULL),
+(12,8,'beat','honda','2111','ad 1123 aa','123123123',NULL,NULL),
+(13,9,'vario','hondaaaaaa','1111','AG 1111 bb','123123123',NULL,NULL),
+(14,9,'civic','honda','2013','ad 1212','123123123',NULL,NULL);
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;

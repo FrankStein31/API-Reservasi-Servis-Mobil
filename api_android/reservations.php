@@ -4,6 +4,52 @@ require_once 'config/connection.php';
 // Set header untuk response JSON
 header('Content-Type: application/json');
 
+// Function to get package details including products and price
+function getPackageDetails($conn, $packageId) {
+    // Get package info
+    $query = "SELECT * FROM packages WHERE id = ?";
+    $stmt = $conn->prepare($query);
+    $stmt->bind_param('i', $packageId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    if ($result->num_rows === 0) {
+        return null;
+    }
+    
+    $package = $result->fetch_assoc();
+    
+    // Get products in package
+    $query = "SELECT p.id, p.name, p.price FROM products p 
+              JOIN package_products pp ON p.id = pp.product_id 
+              WHERE pp.package_id = ?";
+    $stmt = $conn->prepare($query);
+    $stmt->bind_param('i', $packageId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    $products = [];
+    $totalPrice = 0;
+    
+    while ($row = $result->fetch_assoc()) {
+        $productPrice = (float)$row['price'];
+        $products[] = [
+            'id' => (int)$row['id'],
+            'name' => $row['name'],
+            'price' => $productPrice
+        ];
+        $totalPrice += $productPrice;
+    }
+    
+    return [
+        'id' => (int)$package['id'],
+        'name' => $package['name'],
+        'description' => isset($package['description']) ? $package['description'] : null,
+        'products' => $products,
+        'price' => $totalPrice
+    ];
+}
+
 // Mengambil method request
 $method = $_SERVER['REQUEST_METHOD'];
 
@@ -62,74 +108,65 @@ switch ($method) {
     case 'POST':
         $data = json_decode(file_get_contents('php://input'), true);
         
-        // Pastikan semua field wajib ada
-        if (!isset($data['vehicle_id']) || !isset($data['package_id']) || 
-            !isset($data['reservation_date']) || !isset($data['reservation_time'])) {
-            echo json_encode(['status' => 'error', 'message' => 'Semua field diperlukan']);
+        // Validasi data
+        if (!isset($data['customer_id']) || !isset($data['vehicle_id']) || !isset($data['package_id']) || 
+            !isset($data['reservation_date']) || !isset($data['reservation_time']) || !isset($data['vehicle_complaint'])) {
+            echo json_encode(['status' => 'error', 'message' => 'Data tidak lengkap']);
             exit;
         }
         
-        // Validasi kendaraan
-        $vehicleQuery = "SELECT * FROM vehicles WHERE id = ?";
-        $vehicleStmt = $conn->prepare($vehicleQuery);
-        $vehicleStmt->bind_param('i', $data['vehicle_id']);
-        $vehicleStmt->execute();
-        $vehicleResult = $vehicleStmt->get_result();
-        
-        if ($vehicleResult->num_rows == 0) {
-            echo json_encode(['status' => 'error', 'message' => 'Kendaraan tidak ditemukan']);
+        // Get package details
+        $packageDetails = getPackageDetails($conn, $data['package_id']);
+        if (!$packageDetails) {
+            echo json_encode(['status' => 'error', 'message' => 'Paket tidak ditemukan']);
             exit;
         }
         
-        $vehicle = $vehicleResult->fetch_assoc();
-        $customerId = $vehicle['customer_id'];
+        // Save package details as JSON for later reference
+        $packageDetailJson = json_encode($packageDetails);
         
-        // Pastikan vehicle_complaint tidak null
-        $vehicleComplaint = isset($data['vehicle_complaint']) ? $data['vehicle_complaint'] : '';
+        // Begin transaction
+        $conn->begin_transaction();
         
-        // Ambil detail paket untuk disimpan
-        $packageQuery = "SELECT * FROM packages WHERE id = ?";
-        $packageStmt = $conn->prepare($packageQuery);
-        $packageStmt->bind_param('i', $data['package_id']);
-        $packageStmt->execute();
-        $packageResult = $packageStmt->get_result();
-        $packageData = $packageResult->fetch_assoc();
-        $packageDetail = json_encode($packageData);
-        
-        // Insert reservasi baru
-        $query = "INSERT INTO reservations (customer_id, vehicle_id, package_id, package_detail, vehicle_complaint, reservation_date, reservation_time, reservation_origin) 
-                 VALUES (?, ?, ?, ?, ?, ?, ?, 'Online')";
-        $stmt = $conn->prepare($query);
-        $stmt->bind_param('iiissss', 
-            $customerId,
-            $data['vehicle_id'],
-            $data['package_id'],
-            $packageDetail,
-            $vehicleComplaint,
-            $data['reservation_date'],
-            $data['reservation_time']
-        );
-
-        if ($stmt->execute()) {
-            $reservationId = $conn->insert_id;
+        try {
+            // Insert into reservations table
+            $query = "INSERT INTO reservations (customer_id, vehicle_id, package_id, package_detail, reservation_date, reservation_time, vehicle_complaint) 
+                      VALUES (?, ?, ?, ?, ?, ?, ?)";
+            $stmt = $conn->prepare($query);
+            $stmt->bind_param('iiissss', 
+                $data['customer_id'], 
+                $data['vehicle_id'], 
+                $data['package_id'],
+                $packageDetailJson,
+                $data['reservation_date'], 
+                $data['reservation_time'], 
+                $data['vehicle_complaint']
+            );
+            $stmt->execute();
             
-            // Buat service baru dengan status Pending
-            $serviceQuery = "INSERT INTO services (reservation_id, status, created_at, updated_at) 
-                            VALUES (?, 'Pending', NOW(), NOW())";
-            $serviceStmt = $conn->prepare($serviceQuery);
-            $serviceStmt->bind_param('i', $reservationId);
-            $serviceStmt->execute();
-            
-            echo json_encode([
-                'status' => 'success', 
-                'message' => 'Reservasi berhasil dibuat',
-                'data' => ['id' => $reservationId]
-            ]);
-        } else {
-            echo json_encode([
-                'status' => 'error', 
-                'message' => 'Gagal membuat reservasi: ' . $stmt->error
-            ]);
+            if ($stmt->affected_rows > 0) {
+                $reservationId = $conn->insert_id;
+                
+                // Insert into services table
+                $query = "INSERT INTO services (reservation_id, status) VALUES (?, 'Pending')";
+                $stmt = $conn->prepare($query);
+                $stmt->bind_param('i', $reservationId);
+                $stmt->execute();
+                
+                if ($stmt->affected_rows > 0) {
+                    $conn->commit();
+                    echo json_encode(['status' => 'success', 'message' => 'Reservasi berhasil dibuat', 'data' => ['reservation_id' => $reservationId]]);
+                } else {
+                    $conn->rollback();
+                    echo json_encode(['status' => 'error', 'message' => 'Gagal membuat layanan']);
+                }
+            } else {
+                $conn->rollback();
+                echo json_encode(['status' => 'error', 'message' => 'Gagal membuat reservasi']);
+            }
+        } catch (Exception $e) {
+            $conn->rollback();
+            echo json_encode(['status' => 'error', 'message' => 'Error: ' . $e->getMessage()]);
         }
         break;
         
@@ -141,39 +178,48 @@ switch ($method) {
             exit;
         }
         
-        // Cek apakah service status masih Pending
-        $query = "SELECT s.status FROM services s WHERE s.reservation_id = ?";
+        // Check if service status is "Pending"
+        $query = "SELECT s.status FROM services s JOIN reservations r ON s.reservation_id = r.id WHERE r.id = ?";
         $stmt = $conn->prepare($query);
         $stmt->bind_param('i', $data['id']);
         $stmt->execute();
         $result = $stmt->get_result();
         
         if ($result->num_rows > 0) {
-            $service = $result->fetch_assoc();
-            
-            if ($service['status'] !== 'Pending') {
-                echo json_encode(['status' => 'error', 'message' => 'Reservasi tidak dapat dibatalkan karena sedang diproses']);
+            $row = $result->fetch_assoc();
+            if ($row['status'] !== 'Pending') {
+                echo json_encode(['status' => 'error', 'message' => 'Tidak dapat membatalkan reservasi yang sudah diproses']);
                 exit;
             }
             
-            // Hapus service terkait dulu
-            $query = "DELETE FROM services WHERE reservation_id = ?";
-            $stmt = $conn->prepare($query);
-            $stmt->bind_param('i', $data['id']);
-            $stmt->execute();
+            // Begin transaction
+            $conn->begin_transaction();
             
-            // Baru hapus reservasi
-            $query = "DELETE FROM reservations WHERE id = ?";
-            $stmt = $conn->prepare($query);
-            $stmt->bind_param('i', $data['id']);
-            
-            if ($stmt->execute()) {
-                echo json_encode(['status' => 'success', 'message' => 'Reservasi berhasil dibatalkan']);
-            } else {
-                echo json_encode(['status' => 'error', 'message' => 'Gagal membatalkan reservasi']);
+            try {
+                // Delete the reservation and associated service
+                $query = "DELETE FROM services WHERE reservation_id = ?";
+                $stmt = $conn->prepare($query);
+                $stmt->bind_param('i', $data['id']);
+                $stmt->execute();
+                
+                $query = "DELETE FROM reservations WHERE id = ?";
+                $stmt = $conn->prepare($query);
+                $stmt->bind_param('i', $data['id']);
+                $stmt->execute();
+                
+                if ($stmt->affected_rows > 0) {
+                    $conn->commit();
+                    echo json_encode(['status' => 'success', 'message' => 'Reservasi berhasil dibatalkan']);
+                } else {
+                    $conn->rollback();
+                    echo json_encode(['status' => 'error', 'message' => 'Gagal membatalkan reservasi']);
+                }
+            } catch (Exception $e) {
+                $conn->rollback();
+                echo json_encode(['status' => 'error', 'message' => 'Error: ' . $e->getMessage()]);
             }
         } else {
-            echo json_encode(['status' => 'error', 'message' => 'Service tidak ditemukan']);
+            echo json_encode(['status' => 'error', 'message' => 'Reservasi tidak ditemukan']);
         }
         break;
         
