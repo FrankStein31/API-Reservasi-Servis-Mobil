@@ -2,17 +2,15 @@
 require_once 'config/connection.php';
 require_once '../vendor/autoload.php';
 
-// Set your Merchant Server Key
-\Midtrans\Config::$serverKey = 'SB-Mid-server-61XuGAwQ8Bj8LxSS3GzE';
-// Set to Development/Sandbox Environment (default). Set to true for Production Environment (accept real transaction).
-\Midtrans\Config::$isProduction = false;
-// Set sanitization on (default)
-\Midtrans\Config::$isSanitized = true;
-// Set 3DS transaction for credit card to true
-\Midtrans\Config::$is3ds = true;
-
 // Set header untuk response JSON
 header('Content-Type: application/json');
+
+// Konfigurasi Midtrans
+$serverKey = 'SB-Mid-server-mZSxOOkTxAfP_KsMx1fSOHA4';
+\Midtrans\Config::$serverKey = $serverKey;
+\Midtrans\Config::$isProduction = false;
+\Midtrans\Config::$isSanitized = true;
+\Midtrans\Config::$is3ds = true;
 
 // Mengambil method request
 $method = $_SERVER['REQUEST_METHOD'];
@@ -23,8 +21,11 @@ switch ($method) {
             // Get detail pembayaran berdasarkan service_id
             $serviceId = $_GET['service_id'];
             
-            $query = "SELECT p.*, a.name as admin_name FROM payments p 
-                     LEFT JOIN admins a ON p.admin_id = a.id 
+            $query = "SELECT p.*, s.reservation_id, r.vehicle_id, v.name as vehicle_name, v.plate_number 
+                     FROM payments p
+                     JOIN services s ON p.service_id = s.id
+                     JOIN reservations r ON s.reservation_id = r.id
+                     JOIN vehicles v ON r.vehicle_id = v.id
                      WHERE p.service_id = ?";
             $stmt = $conn->prepare($query);
             $stmt->bind_param('i', $serviceId);
@@ -35,21 +36,84 @@ switch ($method) {
                 $payment = $result->fetch_assoc();
                 echo json_encode(['status' => 'success', 'data' => $payment]);
             } else {
-                echo json_encode(['status' => 'error', 'message' => 'Pembayaran belum dilakukan']);
+                // Jika tidak ada pembayaran, langsung ambil data service dan hitung bill
+                $query = "SELECT s.*, r.vehicle_id, r.package_id, r.vehicle_complaint, r.package_detail,
+                         v.name as vehicle_name, v.plate_number, 
+                         p.name as package_name, 
+                         c.name as customer_name, c.email, c.phone
+                         FROM services s
+                         JOIN reservations r ON s.reservation_id = r.id
+                         JOIN vehicles v ON r.vehicle_id = v.id
+                         JOIN packages p ON r.package_id = p.id
+                         JOIN customers c ON v.customer_id = c.id
+                         WHERE s.id = ?";
+                $stmt = $conn->prepare($query);
+                $stmt->bind_param('i', $serviceId);
+                $stmt->execute();
+                $result = $stmt->get_result();
+                
+                if ($result->num_rows > 0) {
+                    $service = $result->fetch_assoc();
+                    
+                    // Hitung bill dari package_detail
+                    $bill = 0;
+                    if (!empty($service['package_detail'])) {
+                        $packageDetail = json_decode($service['package_detail'], true);
+                        
+                        if (isset($packageDetail['products'])) {
+                            $productsStr = $packageDetail['products'];
+                            $productPairs = explode(',', $productsStr);
+                            
+                            foreach ($productPairs as $pair) {
+                                $parts = explode(':', $pair);
+                                if (count($parts) >= 3) {
+                                    $bill += floatval($parts[2]);
+                                }
+                            }
+                        } elseif (isset($packageDetail['price'])) {
+                            $bill = floatval($packageDetail['price']);
+                        }
+                    }
+                    
+                    // Default biaya servis 
+                    if ($bill == 0) {
+                        $bill = 50000;
+                    }
+                    
+                    $service['bill'] = $bill;
+                    
+                    // Jika service sudah selesai, izinkan pembayaran
+                    if ($service['status'] == 'Finish') {
+                        echo json_encode([
+                            'status' => 'ready', 
+                            'message' => 'Data pembayaran siap',
+                            'data' => $service
+                        ]);
+                    } else {
+                        // Jika belum selesai, tidak bisa bayar
+                        echo json_encode([
+                            'status' => 'pending', 
+                            'message' => 'Servis belum selesai, belum bisa melakukan pembayaran',
+                            'data' => $service
+                        ]);
+                    }
+                } else {
+                    echo json_encode(['status' => 'error', 'message' => 'Service tidak ditemukan']);
+                }
             }
-        } elseif (isset($_GET['customer_id'])) {
-            // Get semua pembayaran milik customer tertentu
+        } else if (isset($_GET['customer_id'])) {
+            // Get semua pembayaran milik customer
             $customerId = $_GET['customer_id'];
             
-            $query = "SELECT p.*, s.service_date, s.reservation_id, r.vehicle_id, r.package_id, 
-                     v.name as vehicle_name, v.plate_number, pa.name as package_name 
-                     FROM payments p 
-                     JOIN services s ON p.service_id = s.id 
-                     JOIN reservations r ON s.reservation_id = r.id 
-                     JOIN vehicles v ON r.vehicle_id = v.id 
-                     JOIN packages pa ON r.package_id = pa.id 
-                     WHERE r.customer_id = ? 
-                     ORDER BY p.created_at DESC";
+            $query = "SELECT p.*, s.reservation_id, r.vehicle_id, v.name as vehicle_name, v.plate_number,
+                     r.package_id, pk.name as package_name, s.service_date
+                     FROM payments p
+                     JOIN services s ON p.service_id = s.id
+                     JOIN reservations r ON s.reservation_id = r.id
+                     JOIN vehicles v ON r.vehicle_id = v.id
+                     JOIN packages pk ON r.package_id = pk.id
+                     WHERE v.customer_id = ?
+                     ORDER BY p.id DESC";
             $stmt = $conn->prepare($query);
             $stmt->bind_param('i', $customerId);
             $stmt->execute();
@@ -61,6 +125,8 @@ switch ($method) {
             }
             
             echo json_encode(['status' => 'success', 'data' => $payments]);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Parameter tidak lengkap']);
         }
         break;
         
@@ -72,14 +138,18 @@ switch ($method) {
             exit;
         }
         
+        // Dapatkan service detail untuk transaksi
         $serviceId = $data['service_id'];
         $bill = $data['bill'];
         
-        // Get service detail
-        $query = "SELECT s.*, v.name as vehicle_name, v.plate_number, c.name as customer_name, 
-                 c.email, c.phone 
+        $query = "SELECT s.*, r.vehicle_id, r.package_id, r.vehicle_complaint,
+                 v.name as vehicle_name, v.plate_number, v.customer_id,
+                 p.name as package_name,
+                 c.name as customer_name, c.email, c.phone
                  FROM services s
-                 JOIN vehicles v ON s.vehicle_id = v.id
+                 JOIN reservations r ON s.reservation_id = r.id
+                 JOIN vehicles v ON r.vehicle_id = v.id
+                 JOIN packages p ON r.package_id = p.id
                  JOIN customers c ON v.customer_id = c.id
                  WHERE s.id = ?";
         $stmt = $conn->prepare($query);
@@ -87,64 +157,105 @@ switch ($method) {
         $stmt->execute();
         $result = $stmt->get_result();
         
-        if ($result->num_rows === 0) {
-            echo json_encode(['status' => 'error', 'message' => 'Servis tidak ditemukan']);
-            exit;
-        }
-        
-        $service = $result->fetch_assoc();
-        
-        // Create Midtrans transaction
-        $transaction_details = array(
-            'order_id' => 'ORDER-' . time(),
-            'gross_amount' => $bill
-        );
-        
-        $customer_details = array(
-            'first_name' => $service['customer_name'],
-            'email' => $service['email'],
-            'phone' => $service['phone']
-        );
-        
-        $item_details = array(
-            array(
-                'id' => $serviceId,
-                'price' => $bill,
-                'quantity' => 1,
-                'name' => 'Servis Mobil - ' . $service['vehicle_name'] . ' (' . $service['plate_number'] . ')'
-            )
-        );
-        
-        $transaction = array(
-            'transaction_details' => $transaction_details,
-            'customer_details' => $customer_details,
-            'item_details' => $item_details
-        );
-        
-        try {
-            $snapToken = \Midtrans\Snap::getSnapToken($transaction);
+        if ($result->num_rows > 0) {
+            $service = $result->fetch_assoc();
             
-            // Simpan data pembayaran
-            $query = "INSERT INTO payments (service_id, bill, snap_token, status) VALUES (?, ?, ?, 'pending')";
-            $stmt = $conn->prepare($query);
-            $stmt->bind_param('ids', $serviceId, $bill, $snapToken);
+            // Cek apakah sudah pernah bayar
+            $checkQuery = "SELECT id FROM payments WHERE service_id = ?";
+            $checkStmt = $conn->prepare($checkQuery);
+            $checkStmt->bind_param('i', $serviceId);
+            $checkStmt->execute();
+            $checkResult = $checkStmt->get_result();
             
-            if ($stmt->execute()) {
-                echo json_encode([
-                    'status' => 'success',
-                    'data' => $snapToken
-                ]);
-            } else {
+            if ($checkResult->num_rows > 0) {
+                echo json_encode(['status' => 'error', 'message' => 'Pembayaran sudah dilakukan sebelumnya']);
+                exit;
+            }
+            
+            // Buat transaksi Midtrans
+            $orderId = 'SERVICE-' . $serviceId . '-' . time();
+            
+            $transactionDetails = [
+                'order_id' => $orderId,
+                'gross_amount' => (int)$bill
+            ];
+            
+            $customerDetails = [
+                'first_name' => $service['customer_name'],
+                'email' => $service['email'],
+                'phone' => $service['phone']
+            ];
+            
+            $itemDetails = [
+                [
+                    'id' => 'SRV' . $serviceId,
+                    'price' => (int)$bill,
+                    'quantity' => 1,
+                    'name' => $service['package_name'] . ' - ' . $service['vehicle_name']
+                ]
+            ];
+            
+            $transactionData = [
+                'transaction_details' => $transactionDetails,
+                'customer_details' => $customerDetails,
+                'item_details' => $itemDetails
+            ];
+            
+            try {
+                // Buat Snap Token
+                $snapToken = \Midtrans\Snap::getSnapToken($transactionData);
+                
+                // Insert ke tabel payments
+                $method = $data['method'] ?? 'Midtrans';
+                $pay = $bill;
+                $change = 0;
+                $note = "Pembayaran via " . $method;
+                
+                $query = "INSERT INTO payments (service_id, bill, method, pay, `change`, note, snap_token, order_id) 
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+                $stmt = $conn->prepare($query);
+                $stmt->bind_param('iddiisss', 
+                    $serviceId,
+                    $bill,
+                    $pay,
+                    $change,
+                    $note,
+                    $snapToken,
+                    $orderId
+                );
+                
+                if ($stmt->execute()) {
+                    $paymentId = $conn->insert_id;
+                    
+                    // Update status service menjadi Paid
+                    $updateQuery = "UPDATE services SET status = 'Paid' WHERE id = ?";
+                    $updateStmt = $conn->prepare($updateQuery);
+                    $updateStmt->bind_param('i', $serviceId);
+                    $updateStmt->execute();
+                    
+                    echo json_encode([
+                        'status' => 'success',
+                        'message' => 'Pembayaran berhasil dibuat',
+                        'data' => [
+                            'id' => $paymentId,
+                            'snap_token' => $snapToken,
+                            'redirect_url' => 'https://app.midtrans.com/snap/v2/vtweb/' . $snapToken
+                        ]
+                    ]);
+                } else {
+                    echo json_encode([
+                        'status' => 'error',
+                        'message' => 'Gagal menyimpan pembayaran: ' . $stmt->error
+                    ]);
+                }
+            } catch (Exception $e) {
                 echo json_encode([
                     'status' => 'error',
-                    'message' => 'Gagal menyimpan data pembayaran'
+                    'message' => 'Error Midtrans: ' . $e->getMessage()
                 ]);
             }
-        } catch (\Exception $e) {
-            echo json_encode([
-                'status' => 'error',
-                'message' => $e->getMessage()
-            ]);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Service tidak ditemukan']);
         }
         break;
         

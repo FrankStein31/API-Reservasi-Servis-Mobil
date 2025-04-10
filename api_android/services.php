@@ -29,12 +29,36 @@ if ($method === 'GET') {
             $service = $result->fetch_assoc();
             
             // Ambil harga dari package_detail yang tersimpan dalam JSON
+            $bill = 0;
             if (!empty($service['package_detail'])) {
                 $packageDetail = json_decode($service['package_detail'], true);
-                if (isset($packageDetail['price'])) {
-                    $service['bill'] = $packageDetail['price'];
+                
+                // Jika ada produk dalam package_detail
+                if (isset($packageDetail['products'])) {
+                    $productsStr = $packageDetail['products'];
+                    $productPairs = explode(',', $productsStr);
+                    
+                    foreach ($productPairs as $pair) {
+                        $parts = explode(':', $pair);
+                        if (count($parts) >= 3) {
+                            // Format: productId:productName:price
+                            $bill += floatval($parts[2]);
+                        }
+                    }
+                }
+                
+                // Jika tidak ada products, gunakan harga paket langsung (jika ada)
+                if ($bill == 0 && isset($packageDetail['price'])) {
+                    $bill = floatval($packageDetail['price']);
                 }
             }
+            
+            // Default biaya servis jika tidak ada harga yang ditemukan
+            if ($bill == 0) {
+                $bill = 50000; // Default 50K untuk servis dasar
+            }
+            
+            $service['bill'] = $bill;
             
             echo json_encode([
                 'status' => 'success',
