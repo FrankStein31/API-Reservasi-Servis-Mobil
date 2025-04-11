@@ -6,7 +6,7 @@ require_once '../vendor/autoload.php';
 header('Content-Type: application/json');
 
 // Konfigurasi Midtrans
-$serverKey = 'SB-Mid-server-mZSxOOkTxAfP_KsMx1fSOHA4';
+$serverKey = 'SB-Mid-server-MNo3xTYokgclNykKFrjUtVDg';
 \Midtrans\Config::$serverKey = $serverKey;
 \Midtrans\Config::$isProduction = false;
 \Midtrans\Config::$isSanitized = true;
@@ -190,73 +190,68 @@ switch ($method) {
             // Buat transaksi Midtrans
             $orderId = 'SERVICE-' . $serviceId . '-' . time();
             
-            $transactionDetails = [
-                'order_id' => $orderId,
-                'gross_amount' => (int)$bill
-            ];
-            
-            $customerDetails = [
-                'first_name' => $service['customer_name'],
-                'email' => $service['email'],
-                'phone' => $service['phone']
-            ];
-            
-            $itemDetails = [
-                [
-                    'id' => 'SRV' . $serviceId,
-                    'price' => (int)$bill,
-                    'quantity' => 1,
-                    'name' => $service['package_name'] . ' - ' . $service['vehicle_name']
-                ]
-            ];
-            
-            $transactionData = [
-                'transaction_details' => $transactionDetails,
-                'customer_details' => $customerDetails,
-                'item_details' => $itemDetails
-            ];
+            // Buat parameter untuk Snap API
+            $params = array(
+                'transaction_details' => array(
+                    'order_id' => $orderId,
+                    'gross_amount' => (int)$bill,
+                ),
+                'customer_details' => array(
+                    'first_name' => $service['customer_name'],
+                    'email' => $service['email'],
+                    'phone' => $service['phone'],
+                ),
+                'item_details' => array(
+                    array(
+                        'id' => 'SERVICE-' . $serviceId,
+                        'price' => (int)$bill,
+                        'quantity' => 1,
+                        'name' => 'Pembayaran Service ID #' . $serviceId,
+                    ),
+                ),
+            );
             
             try {
-                // Buat Snap Token
-                $snapToken = \Midtrans\Snap::getSnapToken($transactionData);
+                // Get Snap Payment Page URL
+                $snapToken = \Midtrans\Snap::getSnapToken($params);
+                error_log("Snap Token: " . $snapToken);
                 
                 // Insert ke tabel payments
-                $method = $data['method'] ?? 'Midtrans';
+                $methodValue = 'Card'; // Gunakan 'Card' untuk pembayaran Midtrans karena enum hanya boleh 'Cash' atau 'Card'
                 $pay = $bill;
                 $change = 0;
-                $note = "Pembayaran via " . $method;
+                $note = "Pembayaran via " . ($data['method'] ?? 'Midtrans') . " | Order ID: " . $orderId;
                 
-                $query = "INSERT INTO payments (service_id, bill, method, pay, `change`, note, snap_token, order_id) 
-                         VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+                $query = "INSERT INTO payments (service_id, bill, method, pay, `change`, note, snap_token) 
+                         VALUES (?, ?, ?, ?, ?, ?, ?)";
                 $stmt = $conn->prepare($query);
-                $stmt->bind_param('iddiisss', 
+                $stmt->bind_param('idsdiss', 
                     $serviceId,
                     $bill,
+                    $methodValue,
                     $pay,
                     $change,
                     $note,
-                    $snapToken,
-                    $orderId
+                    $snapToken
                 );
                 
                 if ($stmt->execute()) {
                     $paymentId = $conn->insert_id;
                     
-                    // Update status service menjadi Paid
-                    $updateQuery = "UPDATE services SET status = 'Paid' WHERE id = ?";
+                    // Update status service menjadi Finish karena enum hanya menerima 'Pending', 'Process', 'Finish'
+                    $updateQuery = "UPDATE services SET status = 'Finish' WHERE id = ?";
                     $updateStmt = $conn->prepare($updateQuery);
                     $updateStmt->bind_param('i', $serviceId);
                     $updateStmt->execute();
                     
-                    echo json_encode([
+                    // Respons jika berhasil membuat pembayaran
+                    $response = [
                         'status' => 'success',
                         'message' => 'Pembayaran berhasil dibuat',
-                        'data' => [
-                            'id' => $paymentId,
-                            'snap_token' => $snapToken,
-                            'redirect_url' => 'https://app.midtrans.com/snap/v2/vtweb/' . $snapToken
-                        ]
-                    ]);
+                        'snap_token' => $snapToken,
+                        'order_id' => $orderId
+                    ];
+                    echo json_encode($response);
                 } else {
                     echo json_encode([
                         'status' => 'error',

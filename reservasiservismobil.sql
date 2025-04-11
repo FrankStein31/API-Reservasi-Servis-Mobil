@@ -391,12 +391,14 @@ CREATE TABLE `payments` (
   KEY `payments_admin_id_foreign` (`admin_id`),
   CONSTRAINT `payments_admin_id_foreign` FOREIGN KEY (`admin_id`) REFERENCES `admins` (`id`),
   CONSTRAINT `payments_service_id_foreign` FOREIGN KEY (`service_id`) REFERENCES `services` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 /*Data for the table `payments` */
 
 insert  into `payments`(`id`,`service_id`,`admin_id`,`bill`,`pay`,`change`,`method`,`note`,`snap_token`,`created_at`,`updated_at`) values 
-(3,3,1,235000,235000,0,'Cash','-',NULL,'2025-04-08 16:39:34','2025-04-08 16:39:34');
+(3,3,1,235000,235000,0,'Cash','-',NULL,'2025-04-08 16:39:34','2025-04-08 16:39:34'),
+(7,23,1,185000,185000,0,'Card','Pembayaran via Midtrans | Order ID: SERVICE-23-1744335597','fdcbf8ee-60d8-4eea-b1cc-30c2015a85cf',NULL,NULL),
+(10,24,1,185000,185000,0,'Card','Pembayaran via Midtrans | Order ID: SERVICE-24-1744346941','6d839805-c4f7-433e-8e68-659322f21119',NULL,NULL);
 
 /*Table structure for table `products` */
 
@@ -456,14 +458,15 @@ CREATE TABLE `reservations` (
   CONSTRAINT `reservations_customer_id_foreign` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`),
   CONSTRAINT `reservations_package_id_foreign` FOREIGN KEY (`package_id`) REFERENCES `packages` (`id`),
   CONSTRAINT `reservations_vehicle_id_foreign` FOREIGN KEY (`vehicle_id`) REFERENCES `vehicles` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=24 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=25 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 /*Data for the table `reservations` */
 
 insert  into `reservations`(`id`,`customer_id`,`package_id`,`vehicle_id`,`package_detail`,`vehicle_complaint`,`reservation_date`,`reservation_time`,`reservation_origin`,`attendance_confirmation`,`attendance_message`,`created_at`,`updated_at`) values 
 (3,1,2,9,'[{\"id\": 2, \"name\": \"MidnightBlue 548\", \"about\": \"Northumbria, declared.\", \"pivot\": {\"package_id\": 2, \"product_id\": 2}, \"price\": 150000, \"picture\": null, \"is_active\": \"1\", \"created_at\": \"2025-02-04T18:36:19.000000Z\", \"updated_at\": \"2025-02-04T18:36:19.000000Z\", \"category_id\": 2, \"picture_url\": \"http://127.0.0.1:8000/img/no-image.jpg\"}, {\"id\": 3, \"name\": \"LightCyan 005\", \"about\": \"March Hare. The King.\", \"pivot\": {\"package_id\": 2, \"product_id\": 3}, \"price\": 35000, \"picture\": null, \"is_active\": \"1\", \"created_at\": \"2025-02-04T18:36:19.000000Z\", \"updated_at\": \"2025-02-04T18:36:19.000000Z\", \"category_id\": 3, \"picture_url\": \"http://127.0.0.1:8000/img/no-image.jpg\"}]','stang miring','2025-04-04','09:00:00','Offline',NULL,NULL,'2025-04-04 11:27:52','2025-04-04 11:27:52'),
 (4,1,3,9,'[{\"id\": 1, \"name\": \"AliceBlue 847\", \"about\": \"And yesterday things I.\", \"pivot\": {\"package_id\": 3, \"product_id\": 1}, \"price\": 75000, \"picture\": null, \"is_active\": \"1\", \"created_at\": \"2025-02-04T18:36:19.000000Z\", \"updated_at\": \"2025-02-04T18:36:19.000000Z\", \"category_id\": 3, \"picture_url\": \"http://127.0.0.1:8000/img/no-image.jpg\"}]','gatau','2025-04-04','09:00:00','Offline',NULL,NULL,'2025-04-04 11:31:16','2025-04-04 11:31:16'),
-(23,9,2,14,'{\"id\": 2, \"name\": \"Ganti Oli B\", \"price\": 185000, \"products\": [{\"id\": 2, \"name\": \"MidnightBlue 548\", \"price\": 150000}, {\"id\": 3, \"name\": \"LightCyan 005\", \"price\": 35000}], \"description\": null}','qweqwe','2025-04-11','14:00:00','Online',NULL,NULL,NULL,NULL);
+(23,9,2,14,'{\"id\": 2, \"name\": \"Ganti Oli B\", \"price\": 185000, \"products\": [{\"id\": 2, \"name\": \"MidnightBlue 548\", \"price\": 150000}, {\"id\": 3, \"name\": \"LightCyan 005\", \"price\": 35000}], \"description\": null}','qweqwe','2025-04-11','14:00:00','Online',NULL,NULL,NULL,NULL),
+(24,9,2,13,'{\"id\": 2, \"name\": \"Ganti Oli B\", \"price\": 185000, \"products\": [{\"id\": 2, \"name\": \"MidnightBlue 548\", \"price\": 150000}, {\"id\": 3, \"name\": \"LightCyan 005\", \"price\": 35000}], \"description\": null}','qweqwe','2025-04-12','13:00:00','Online',NULL,NULL,NULL,NULL);
 
 /*Table structure for table `services` */
 
@@ -485,14 +488,15 @@ CREATE TABLE `services` (
   KEY `services_mechanic_id_foreign` (`mechanic_id`),
   CONSTRAINT `services_mechanic_id_foreign` FOREIGN KEY (`mechanic_id`) REFERENCES `mechanics` (`id`),
   CONSTRAINT `services_reservation_id_foreign` FOREIGN KEY (`reservation_id`) REFERENCES `reservations` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=24 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=25 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 /*Data for the table `services` */
 
 insert  into `services`(`id`,`reservation_id`,`service_date`,`next_service_date`,`status`,`note`,`fee`,`mechanic_id`,`created_at`,`updated_at`) values 
 (3,3,'2025-04-08','2025-05-08','Finish',NULL,50000,3,'2025-04-04 11:27:52','2025-04-08 16:39:34'),
 (4,4,'2025-04-04',NULL,'Process',NULL,NULL,3,'2025-04-04 11:31:16','2025-04-04 11:31:25'),
-(23,23,'2025-04-10',NULL,'Finish',NULL,NULL,2,NULL,'2025-04-10 16:34:30');
+(23,23,'2025-04-10',NULL,'Finish',NULL,NULL,2,NULL,'2025-04-10 16:34:30'),
+(24,24,'2025-04-11',NULL,'Finish',NULL,NULL,3,NULL,'2025-04-11 08:42:59');
 
 /*Table structure for table `vehicles` */
 
