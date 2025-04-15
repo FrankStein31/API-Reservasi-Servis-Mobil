@@ -60,7 +60,8 @@ switch ($method) {
             $reservationId = $_GET['id'];
             
             $query = "SELECT r.*, v.name as vehicle_name, v.plate_number, p.name as package_name,
-                     s.id as service_id, s.status as service_status, s.service_date 
+                     s.id as service_id, s.status as service_status, s.service_date,
+                     IFNULL((SELECT COUNT(*) FROM payments WHERE service_id = s.id), 0) as payment_exists 
                      FROM reservations r
                      JOIN vehicles v ON r.vehicle_id = v.id
                      JOIN packages p ON r.package_id = p.id
@@ -82,7 +83,8 @@ switch ($method) {
             $customerId = $_GET['customer_id'];
             
             $query = "SELECT r.*, v.name as vehicle_name, v.plate_number, p.name as package_name,
-                     s.id as service_id, s.status as service_status 
+                     s.id as service_id, s.status as service_status,
+                     IFNULL((SELECT COUNT(*) FROM payments WHERE service_id = s.id), 0) as payment_exists 
                      FROM reservations r
                      JOIN vehicles v ON r.vehicle_id = v.id
                      JOIN packages p ON r.package_id = p.id

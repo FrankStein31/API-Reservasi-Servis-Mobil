@@ -458,7 +458,7 @@ CREATE TABLE `reservations` (
   CONSTRAINT `reservations_customer_id_foreign` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`),
   CONSTRAINT `reservations_package_id_foreign` FOREIGN KEY (`package_id`) REFERENCES `packages` (`id`),
   CONSTRAINT `reservations_vehicle_id_foreign` FOREIGN KEY (`vehicle_id`) REFERENCES `vehicles` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=25 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=26 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 /*Data for the table `reservations` */
 
@@ -466,7 +466,8 @@ insert  into `reservations`(`id`,`customer_id`,`package_id`,`vehicle_id`,`packag
 (3,1,2,9,'[{\"id\": 2, \"name\": \"MidnightBlue 548\", \"about\": \"Northumbria, declared.\", \"pivot\": {\"package_id\": 2, \"product_id\": 2}, \"price\": 150000, \"picture\": null, \"is_active\": \"1\", \"created_at\": \"2025-02-04T18:36:19.000000Z\", \"updated_at\": \"2025-02-04T18:36:19.000000Z\", \"category_id\": 2, \"picture_url\": \"http://127.0.0.1:8000/img/no-image.jpg\"}, {\"id\": 3, \"name\": \"LightCyan 005\", \"about\": \"March Hare. The King.\", \"pivot\": {\"package_id\": 2, \"product_id\": 3}, \"price\": 35000, \"picture\": null, \"is_active\": \"1\", \"created_at\": \"2025-02-04T18:36:19.000000Z\", \"updated_at\": \"2025-02-04T18:36:19.000000Z\", \"category_id\": 3, \"picture_url\": \"http://127.0.0.1:8000/img/no-image.jpg\"}]','stang miring','2025-04-04','09:00:00','Offline',NULL,NULL,'2025-04-04 11:27:52','2025-04-04 11:27:52'),
 (4,1,3,9,'[{\"id\": 1, \"name\": \"AliceBlue 847\", \"about\": \"And yesterday things I.\", \"pivot\": {\"package_id\": 3, \"product_id\": 1}, \"price\": 75000, \"picture\": null, \"is_active\": \"1\", \"created_at\": \"2025-02-04T18:36:19.000000Z\", \"updated_at\": \"2025-02-04T18:36:19.000000Z\", \"category_id\": 3, \"picture_url\": \"http://127.0.0.1:8000/img/no-image.jpg\"}]','gatau','2025-04-04','09:00:00','Offline',NULL,NULL,'2025-04-04 11:31:16','2025-04-04 11:31:16'),
 (23,9,2,14,'{\"id\": 2, \"name\": \"Ganti Oli B\", \"price\": 185000, \"products\": [{\"id\": 2, \"name\": \"MidnightBlue 548\", \"price\": 150000}, {\"id\": 3, \"name\": \"LightCyan 005\", \"price\": 35000}], \"description\": null}','qweqwe','2025-04-11','14:00:00','Online',NULL,NULL,NULL,NULL),
-(24,9,2,13,'{\"id\": 2, \"name\": \"Ganti Oli B\", \"price\": 185000, \"products\": [{\"id\": 2, \"name\": \"MidnightBlue 548\", \"price\": 150000}, {\"id\": 3, \"name\": \"LightCyan 005\", \"price\": 35000}], \"description\": null}','qweqwe','2025-04-12','13:00:00','Online',NULL,NULL,NULL,NULL);
+(24,9,2,13,'{\"id\": 2, \"name\": \"Ganti Oli B\", \"price\": 185000, \"products\": [{\"id\": 2, \"name\": \"MidnightBlue 548\", \"price\": 150000}, {\"id\": 3, \"name\": \"LightCyan 005\", \"price\": 35000}], \"description\": null}','qweqwe','2025-04-12','13:00:00','Online',NULL,NULL,NULL,NULL),
+(25,9,1,15,'{\"id\": 1, \"name\": \"Ganti Oli A\", \"price\": 225000, \"products\": [{\"id\": 1, \"name\": \"AliceBlue 847\", \"price\": 75000}, {\"id\": 2, \"name\": \"MidnightBlue 548\", \"price\": 150000}], \"description\": null}','aaaaaa','2025-04-16','11:00:00','Online',NULL,NULL,NULL,NULL);
 
 /*Table structure for table `services` */
 
@@ -488,7 +489,7 @@ CREATE TABLE `services` (
   KEY `services_mechanic_id_foreign` (`mechanic_id`),
   CONSTRAINT `services_mechanic_id_foreign` FOREIGN KEY (`mechanic_id`) REFERENCES `mechanics` (`id`),
   CONSTRAINT `services_reservation_id_foreign` FOREIGN KEY (`reservation_id`) REFERENCES `reservations` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=25 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=26 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 /*Data for the table `services` */
 
@@ -496,7 +497,8 @@ insert  into `services`(`id`,`reservation_id`,`service_date`,`next_service_date`
 (3,3,'2025-04-08','2025-05-08','Finish',NULL,50000,3,'2025-04-04 11:27:52','2025-04-08 16:39:34'),
 (4,4,'2025-04-04',NULL,'Process',NULL,NULL,3,'2025-04-04 11:31:16','2025-04-04 11:31:25'),
 (23,23,'2025-04-10',NULL,'Finish',NULL,NULL,2,NULL,'2025-04-10 16:34:30'),
-(24,24,'2025-04-11',NULL,'Finish',NULL,NULL,3,NULL,'2025-04-11 08:42:59');
+(24,24,'2025-04-11',NULL,'Finish',NULL,NULL,3,NULL,'2025-04-11 08:42:59'),
+(25,25,'2025-04-15',NULL,'Finish',NULL,NULL,1,NULL,'2025-04-15 10:35:20');
 
 /*Table structure for table `vehicles` */
 
@@ -515,7 +517,7 @@ CREATE TABLE `vehicles` (
   PRIMARY KEY (`id`),
   KEY `vehicles_customer_id_foreign` (`customer_id`),
   CONSTRAINT `vehicles_customer_id_foreign` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=16 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 /*Data for the table `vehicles` */
 
@@ -533,7 +535,8 @@ insert  into `vehicles`(`id`,`customer_id`,`name`,`brand`,`year`,`plate_number`,
 (11,8,'vario','honda','2024','ag 2222 xx','123123123',NULL,NULL),
 (12,8,'beat','honda','2111','ad 1123 aa','123123123',NULL,NULL),
 (13,9,'vario','hondaaaaaa','1111','AG 1111 bb','123123123',NULL,NULL),
-(14,9,'civic','honda','2013','ad 1212','123123123',NULL,NULL);
+(14,9,'civic','honda','2013','ad 1212','123123123',NULL,NULL),
+(15,9,'beat','honda','2001','AG 1111 AF','123123123',NULL,NULL);
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
