@@ -5,6 +5,55 @@ require_once '../vendor/autoload.php';
 // Set header untuk response JSON
 header('Content-Type: application/json');
 
+// Fungsi untuk mengirim notifikasi WhatsApp menggunakan API Fonnte
+function sendWhatsAppNotification($conn, $customerId, $message) {
+    // Ambil nomor telepon pelanggan
+    $query = "SELECT phone FROM customers WHERE id = ?";
+    $stmt = $conn->prepare($query);
+    $stmt->bind_param('i', $customerId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    if ($result->num_rows === 0) {
+        return false;
+    }
+    
+    $customer = $result->fetch_assoc();
+    $phoneNumber = $customer['phone'];
+    
+    // Pastikan nomor telepon valid
+    if (empty($phoneNumber)) {
+        return false;
+    }
+    
+    // Token API Fonnte
+    $token = "UPvy5unaoPHJggKLHW6V"; // Token API Fonnte
+    
+    $curl = curl_init();
+    curl_setopt_array($curl, array(
+        CURLOPT_URL => 'https://api.fonnte.com/send',
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_ENCODING => '',
+        CURLOPT_MAXREDIRS => 10,
+        CURLOPT_TIMEOUT => 0,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+        CURLOPT_CUSTOMREQUEST => 'POST',
+        CURLOPT_POSTFIELDS => array(
+            'target' => $phoneNumber,
+            'message' => $message,
+        ),
+        CURLOPT_HTTPHEADER => array(
+            "Authorization: $token"
+        ),
+    ));
+
+    $response = curl_exec($curl);
+    curl_close($curl);
+    
+    return $response;
+}
+
 // Konfigurasi Midtrans
 $serverKey = 'SB-Mid-server-MNo3xTYokgclNykKFrjUtVDg';
 \Midtrans\Config::$serverKey = $serverKey;
@@ -243,6 +292,24 @@ switch ($method) {
                     $updateStmt = $conn->prepare($updateQuery);
                     $updateStmt->bind_param('i', $serviceId);
                     $updateStmt->execute();
+                    
+                    // Kirim notifikasi WhatsApp untuk pembayaran berhasil
+                    $formattedBill = number_format($bill, 0, ',', '.');
+                    $paymentMethod = $data['method'] ?? 'Midtrans';
+                    
+                    // Pesan notifikasi WhatsApp
+                    $message = "Halo {$service['customer_name']}!\n\n";
+                    $message .= "Pembayaran servis kendaraan *{$service['vehicle_name']}* berhasil dibuat.\n\n";
+                    $message .= "Detail Pembayaran:\n";
+                    $message .= "- ID Pembayaran: #$paymentId\n";
+                    $message .= "- Kendaraan: {$service['vehicle_name']} ({$service['plate_number']})\n";
+                    $message .= "- Paket: {$service['package_name']}\n";
+                    $message .= "- Total: Rp $formattedBill\n";
+                    $message .= "- Metode: $paymentMethod\n\n";
+                    $message .= "Terima kasih telah melakukan pembayaran. Anda dapat mengakses bukti pembayaran melalui aplikasi.";
+                    
+                    // Kirim notifikasi WhatsApp
+                    sendWhatsAppNotification($conn, $service['customer_id'], $message);
                     
                     // Respons jika berhasil membuat pembayaran
                     $response = [
