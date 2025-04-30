@@ -147,7 +147,7 @@ switch ($method) {
                     $service['bill'] = $bill;
                     
                     // Jika service sudah selesai, izinkan pembayaran
-                    if ($service['status'] == 'Finish') {
+                    if ($service['status'] == 'Selesai') {
                         echo json_encode([
                             'status' => 'ready', 
                             'message' => 'Data pembayaran siap',
